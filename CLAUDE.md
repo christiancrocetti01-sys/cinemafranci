@@ -21,6 +21,22 @@
 6. **Includere/escludere i cinema** dalla ricerca (es. deselezionare il Luce di Sesto Fiorentino il giorno che non ci vuole andare).
 7. Possibilità di cercare 1 o 2 film insieme.
 
+## Interfaccia richiesta (vocale + screenshot dell'amico, 20/11/2026)
+L'amico ha mandato uno screenshot della pagina "FILM IN SALA" del sito di un cinema come spunto grafico
+("molto intuitiva"). Com'è fatta quella pagina:
+- Tema scuro (blu notte), righe alternate con sfondo leggermente diverso.
+- Prima colonna: **locandina + titolo del film**. Colonne: **i giorni** (es. "VENERDÌ 20 NOVEMBRE", in azzurro).
+- Nelle celle: **orari come "pillole"** arrotondate con bordo azzurro (es. 16:00, 18:15, 20:30).
+
+**Cosa vuole lui invece (adattamento):**
+- Non servono i giorni in colonna: **si seleziona un giorno** (selettore data in alto).
+- **Colonne = le sale/cinema selezionati.**
+- **Righe = i film in programma a Firenze** quel giorno (con locandina e titolo).
+- **Incrocio riga×colonna = gli orari** (pillole). Cella vuota se il film non c'è in quel cinema.
+- Stessa estetica: scuro, pillole orarie, locandine.
+- Da valutare: su telefono con tanti cinema la tabella va scorsa in orizzontale (prima colonna fissa)
+  oppure va trasformata in schede/lista. Il filtro per film o cinema riduce righe e colonne.
+
 ## Da chiarire / in attesa
 - [ ] Lista esatta dei ~10 cinema con i rispettivi siti web.
 - [ ] Dove ospitare il sito (proposta: GitHub Pages + GitHub Actions che fa lo scraping ogni giorno, tutto gratis).

@@ -79,7 +79,7 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
 - [x] Hosting: **GitHub Pages** + GitHub Actions (deciso 20/11).
 - [x] Uso **principalmente da telefono**: deve essere ottimizzato mobile "come un'app" (deciso 20/11) → PWA installabile.
 - [x] Branch `main` creato (20/11) da `claude/relaxed-tesla-obj9y3`. Il sito si pubblica da `main`: le modifiche vanno portate lì.
-- [ ] Attivare Pages: Settings → Pages → Source = "GitHub Actions" (lo fa l'utente). URL: https://christiancrocetti01-sys.github.io/cinemafranci/
+- [x] Pages attivo e funzionante (confermato 20/11). URL: https://christiancrocetti01-sys.github.io/cinemafranci/
 
 ## Decisioni prese
 - Sito web statico (non app nativa), installabile come PWA, pensato per il telefono.
@@ -89,7 +89,7 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
 ## Stato attuale
 - Fatto (20/11): scraper funzionante su 8/8 cinema (~20 film, ~500 spettacoli, ~1,5 min), sito mobile con vista Tabella e vista Orari,
   PWA (manifest + service worker + icone), workflow di aggiornamento e pubblicazione.
-- Da fare: attivare Pages (vedi sopra) e farlo provare all'amico; poi raccogliere il suo feedback.
+- Da fare: farlo provare all'amico e raccogliere il suo feedback.
 - Idee possibili: pagina/scheda del film, filtro "dalle ore", aggiungere altri cinema (basta il path ComingSoon in `CINEMA`).
 
 ## Struttura del codice

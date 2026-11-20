@@ -76,15 +76,37 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
 
 ## Da chiarire / in attesa
 - [x] Lista dei cinema (8, vedi sopra).
-- [ ] Dove ospitare il sito (proposta: GitHub Pages + GitHub Actions che fa lo scraping ogni giorno, tutto gratis).
-- [ ] Va usato soprattutto da telefono? (si presume di sì → design mobile-first)
+- [x] Hosting: **GitHub Pages** + GitHub Actions (deciso 20/11).
+- [x] Uso **principalmente da telefono**: deve essere ottimizzato mobile "come un'app" (deciso 20/11) → PWA installabile.
+- [ ] Attivare Pages: Settings → Pages → Source = "GitHub Actions", e portare il codice su `main` (il workflow pubblica solo da main).
 
 ## Decisioni prese
-- Sito web (non app nativa).
+- Sito web statico (non app nativa), installabile come PWA, pensato per il telefono.
+- GitHub Pages; i dati li produce il workflow (`site/data/` è in .gitignore, non si committano).
+- Teatro Italia: se scheda riassuntiva e pagina del film non coincidono (succede!), vale la pagina del film.
 
 ## Stato attuale
-- Requisiti raccolti, lista cinema ricevuta, fonti dati analizzate e prototipo dello scraper ComingSoon provato (ok su 6/8).
-- Prossimo passo: scraper vero (Python, solo libreria standard) → `data/programmazione.json`, poi sito statico.
+- Fatto (20/11): scraper funzionante su 8/8 cinema (~20 film, ~500 spettacoli, ~1,5 min), sito mobile con vista Tabella e vista Orari,
+  PWA (manifest + service worker + icone), workflow di aggiornamento e pubblicazione.
+- Da fare: attivare Pages (vedi sopra) e farlo provare all'amico; poi raccogliere il suo feedback.
+- Idee possibili: pagina/scheda del film, filtro "dalle ore", aggiungere altri cinema (basta il path ComingSoon in `CINEMA`).
+
+## Struttura del codice
+- `scraper/scrape.py`: solo libreria standard. Lista `CINEMA` (id, nome, zona, sito, fonte, path ComingSoon). Fonti: `da_comingsoon`,
+  `da_italia`, `da_girone`. Uscita: `site/data/programmazione.json` =
+  `{generato, cinema:[{id,nome,zona,sito}], film:{chiave:{titolo,locandina|immagine,genere,durata}},
+  spettacoli:[{k:chiave film, c:id cinema, d:"YYYY-MM-DD", h:"HH:MM", sala?, tag?:[...], url?}], aggiornato:{id:iso}, errori:{id:msg}}`.
+  - `chiave_film()` normalizza i titoli (accenti, punteggiatura, O.V./IMAX) per unire lo stesso film tra cinema diversi.
+  - `--prev URL`: se un cinema fallisce si riusano i suoi spettacoli della pubblicazione precedente (e l'errore appare nel piè di pagina).
+  - Prova in locale: `python3 scraper/scrape.py` poi `cd site && python3 -m http.server`.
+- `site/`: `index.html`, `style.css`, `app.js` (JS vanilla, nessun build), `sw.js` (offline), `manifest.webmanifest`, `icons/`.
+  - Vista **Tabella**: righe = film (alfabetico), colonne = cinema attivi che hanno spettacoli quel giorno, celle = pillole orarie
+    (link d'acquisto se c'è). Prima colonna e intestazione fisse.
+  - Vista **Orari**: elenco cronologico per fasce (mattina/pomeriggio/sera/notte), nasconde quelli già iniziati (pulsante per mostrarli).
+  - Ricerca: più film separati da virgola. Cinema esclusi e vista scelta salvati in localStorage.
+  - Spettacoli prima delle 05:00 = notte del giorno indicato (ordinati in fondo, pillola tratteggiata "notte").
+  - Stile ispirato al sito del Fiorella: blu notte, accento #3ab0ff, font Outfit, pillole con bordo.
+- `.github/workflows/aggiorna.yml`: alle 5:17, 11:17 e 16:17 UTC + a ogni push su main + manuale → scraper → deploy Pages.
 
 ## Note tecniche
 - Branch di sviluppo: `claude/relaxed-tesla-obj9y3`.

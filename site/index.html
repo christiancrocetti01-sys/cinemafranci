@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CinemaFranci</title>
+  <meta name="description" content="Gli orari dei cinema di Firenze in un colpo d'occhio.">
+  <meta name="theme-color" content="#08121a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CinemaFranci">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="bar">
+        <h1 class="logo">Cinema<span>Franci</span></h1>
+        <div class="bar-actions">
+          <button class="icon-btn" id="btn-cerca" aria-label="Cerca un film" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          </button>
+          <div class="seg" role="tablist" aria-label="Vista">
+            <button role="tab" data-vista="tabella" aria-selected="true">Tabella</button>
+            <button role="tab" data-vista="orari" aria-selected="false">Orari</button>
+          </div>
+        </div>
+      </div>
+      <div class="cerca" id="cerca" hidden>
+        <input id="q" type="search" inputmode="search" autocomplete="off" enterkeyhint="search"
+               placeholder="Cerca film… (più film: dio ride, fjord)" aria-label="Cerca film">
+        <button class="pulisci" id="pulisci" aria-label="Cancella ricerca">✕</button>
+      </div>
+      <nav class="giorni scroll-x" id="giorni" aria-label="Giorno"></nav>
+      <div class="cinema-chips scroll-x" id="cinema" role="group" aria-label="Cinema da includere"></div>
+    </header>
+
+    <main class="contenuto" id="contenuto">
+      <div class="stato" id="stato">Carico la programmazione…</div>
+    </main>
+
+    <footer class="piede" id="piede"></footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

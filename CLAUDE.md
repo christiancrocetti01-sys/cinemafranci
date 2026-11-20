@@ -78,7 +78,8 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
 - [x] Lista dei cinema (8, vedi sopra).
 - [x] Hosting: **GitHub Pages** + GitHub Actions (deciso 20/11).
 - [x] Uso **principalmente da telefono**: deve essere ottimizzato mobile "come un'app" (deciso 20/11) → PWA installabile.
-- [ ] Attivare Pages: Settings → Pages → Source = "GitHub Actions", e portare il codice su `main` (il workflow pubblica solo da main).
+- [x] Branch `main` creato (20/11) da `claude/relaxed-tesla-obj9y3`. Il sito si pubblica da `main`: le modifiche vanno portate lì.
+- [ ] Attivare Pages: Settings → Pages → Source = "GitHub Actions" (lo fa l'utente). URL: https://christiancrocetti01-sys.github.io/cinemafranci/
 
 ## Decisioni prese
 - Sito web statico (non app nativa), installabile come PWA, pensato per il telefono.

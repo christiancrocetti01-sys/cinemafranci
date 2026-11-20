@@ -73,6 +73,14 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
 - **Il Girone**: pagina programmazione = elenco link `/arci/evento/<slug>/`; nella pagina evento, sezione "PROGRAMMAZIONE" in testo libero:
   "Sabato 21 novembre ore 21.15" → regex. Ci sono anche eventi non-film (es. "Cinema a Merenda", "Jam session").
 - Portico ha JSON-LD ItemList ma senza orari; staseraalcinema (Marconi/Principe) mostra un giorno per volta.
+- **MyMovies** (`mymovies.it/cinema/firenze/21354/` = Space, `/cinema/firenze/campibisenzio/5748/` = UCI Campi) ha gli orari di OGGI
+  in HTML semplice: utile come controllo/riserva per UCI e Space (non mostra gli spettacoli dopo mezzanotte).
+
+### Verifica del 20/11/2026 (sito pubblicato vs fonti ufficiali)
+- Fiorella, Portico, Marconi, Principe (oggi), Teatro Italia (pagine film), Girone: tutto coincide.
+- UCI e Space confrontati con MyMovies: coincidono.
+- Corretto: al Girone "ore 16.00 merenda; ore 16.30 proiezione" dava due orari → ora si tiene solo la proiezione.
+- ComingSoon toglie gli spettacoli già iniziati: per "oggi" il sito mostra solo quelli ancora da fare (va bene).
 
 ## Da chiarire / in attesa
 - [x] Lista dei cinema (8, vedi sopra).

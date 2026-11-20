@@ -278,6 +278,15 @@ def da_girone(cin, rif):
                     giorno = data_da(d.group(1), d.group(2), rif)
                     resto = r[d.end():]
                 if giorno:
+                    # "ore 16.00 merenda offerta dal circolo; ore 16.30 proiezione del film":
+                    # se la riga distingue, teniamo solo l'orario della proiezione.
+                    pezzi = re.split(r"[;,]", resto)
+                    proiez = [x for x in pezzi if ORA_RE.search(x) and re.search(r"proiez|inizio film", x, re.I)]
+                    if proiez:
+                        resto = " ".join(proiez)
+                    else:
+                        resto = " ".join(x for x in pezzi
+                                         if not re.search(r"merenda|aperitiv|cena|apertura|buffet", x, re.I)) or resto
                     for o in ORA_RE.finditer(resto):
                         trovati.append({"k": k, "d": giorno.isoformat(), "h": f"{int(o.group(1)):02d}:{o.group(2)}"})
         if not trovati:  # eventi singoli: "Data e ora | 21/11/2026 | 16:00"

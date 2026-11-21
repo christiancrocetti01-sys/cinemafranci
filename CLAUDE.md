@@ -102,6 +102,8 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
 - Teatro Italia: se scheda riassuntiva e pagina del film non coincidono (succede!), vale la pagina del film.
 
 ## Stato attuale
+- Fatto (21/11): test completo dell'app (Playwright, 62 controlli ok); versione PC ottimizzata (≥1000px: locandina a lato del titolo,
+  tutte le colonne a schermo, vista Orari centrata, effetti al passaggio del mouse).
 - Fatto (21/11): pin/nascondi film, orario → pagina del film, titolo → Google (feedback dell'amico).
 - Fatto (20/11): scraper funzionante su 8/8 cinema (~20 film, ~500 spettacoli, ~1,5 min), sito mobile con vista Tabella e vista Orari,
   PWA (manifest + service worker + icone), workflow di aggiornamento e pubblicazione.

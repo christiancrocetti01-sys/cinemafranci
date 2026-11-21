@@ -336,3 +336,40 @@ a.ora:active { background: var(--accento-bg); }
   .film-th .poster { width: 84px; }
   .logo { font-size: 24px; }
 }
+
+/* ---------- PC / schermi larghi ---------- */
+@media (min-width: 1000px) {
+  :root { --col-film: 260px; --col-cinema: 112px; }
+  .app { max-width: 1680px; }
+  .bar, .cerca, .scroll-x { padding-left: 24px; padding-right: 24px; }
+  .cerca { max-width: 620px; }
+  .scroll-x { flex-wrap: wrap; overflow: visible; }
+  /* Locandina a sinistra, titolo e pulsanti a destra: righe basse, più film a schermo */
+  .tabella tbody th { padding: 10px 12px 10px 16px; }
+  .film-th .poster { float: left; width: 58px; margin: 0 12px 0 0; }
+  .film-th .poster.largo { width: 92px; aspect-ratio: 16 / 10; }
+  .film-th .tit { font-size: 14px; padding-top: 2px; }
+  .film-th::after { content: ""; display: block; clear: both; }
+  .tabella td { padding: 12px 6px; }
+  .tabella td.vuota::after { padding-top: 4px; }
+  .tabella thead th .cn { font-size: 13px; }
+  /* Vista Orari: colonna centrata invece che larga tutto lo schermo */
+  .elenco { max-width: 860px; margin: 0 auto; }
+}
+
+/* Effetti al passaggio del mouse (solo dove c'è un mouse) */
+@media (hover: hover) {
+  a.pill:hover, a.ora:hover { background: var(--accento-bg); border-color: var(--accento-2); }
+  .scheda:hover .tit, .scheda:hover .rt { color: var(--accento-2); }
+  .chip:hover, .giorno:not([aria-pressed="true"]):hover, .icon-btn:hover, .az:hover { border-color: var(--accento); }
+  .az:hover { color: var(--testo); }
+  .seg button:not([aria-selected="true"]):hover { color: var(--testo); }
+  .tabella tbody tr:hover th, .tabella tbody tr:hover td { background: #133149; }
+}
+@media (min-width: 1000px) and (max-width: 1279px) {
+  :root { --col-film: 200px; --col-cinema: 92px; }
+  .film-th .poster { width: 46px; }
+  .tabella thead th { padding-left: 4px; padding-right: 4px; }
+  .tabella thead th .cn { font-size: 12px; }
+  .pill { min-width: 56px; font-size: 14px; }
+}

@@ -166,6 +166,8 @@ function nascondi(k) {
 }
 
 function mostra(k) {
+  document.querySelector(".toast")?.remove(); // l'avviso "… nascosto" non vale più
+  clearTimeout(timerAvviso);
   stato.nascosti.delete(k);
   mem.scrivi("nascosti", [...stato.nascosti]);
   disegnaVista();

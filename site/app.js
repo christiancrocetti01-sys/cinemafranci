@@ -31,6 +31,9 @@ const stato = {
   q: "",
   vista: mem.leggi("vista", "tabella"),
   mostraPassati: false,
+  fissati: new Set(mem.leggi("fissati", [])),   // film sempre in cima (chiave film)
+  nascosti: new Set(mem.leggi("nascosti", [])), // film tolti dalla vista
+  mostraNascosti: false,
 };
 
 // ------------------------------------------------------------ utilità date/ore
@@ -128,34 +131,107 @@ function disegnaCinema() {
 }
 const salvaEsclusi = () => mem.scrivi("esclusi", [...stato.esclusi]);
 
+// Spettacoli del giorno nei cinema attivi (e che corrispondono alla ricerca).
+// I film nascosti si vedono solo se li si cerca per nome o si sceglie "Mostra".
 function spettacoliFiltrati() {
   const termini = stato.q.split(",").map(normalizza).filter(Boolean);
   const film = stato.dati.film;
-  return stato.dati.spettacoli.filter((s) => {
+  const tutti = stato.dati.spettacoli.filter((s) => {
     if (s.d !== stato.giorno || stato.esclusi.has(s.c)) return false;
     if (!termini.length) return true;
     const t = normalizza(film[s.k]?.titolo || s.k);
     return termini.some((q) => t.includes(q));
   });
+  const vediNascosti = termini.length > 0 || stato.mostraNascosti;
+  const sp = vediNascosti ? tutti : tutti.filter((s) => !stato.nascosti.has(s.k));
+  const nascostiOggi = new Set(tutti.filter((s) => stato.nascosti.has(s.k)).map((s) => s.k));
+  return { sp, nascostiOggi, vediNascosti };
+}
+
+// ------------------------------------------------------------ film fissati / nascosti
+const titoloDi = (k) => stato.dati.film[k]?.titolo || k;
+const ordinaFilm = (a, b) => (stato.fissati.has(b) - stato.fissati.has(a)) || titoloDi(a).localeCompare(titoloDi(b), "it");
+
+function fissa(k) {
+  stato.fissati.has(k) ? stato.fissati.delete(k) : stato.fissati.add(k);
+  mem.scrivi("fissati", [...stato.fissati]);
+  disegnaVista();
+}
+
+function nascondi(k) {
+  stato.nascosti.add(k);
+  mem.scrivi("nascosti", [...stato.nascosti]);
+  disegnaVista();
+  avviso(`"${titoloDi(k)}" nascosto`, "Annulla", () => mostra(k));
+}
+
+function mostra(k) {
+  stato.nascosti.delete(k);
+  mem.scrivi("nascosti", [...stato.nascosti]);
+  disegnaVista();
+}
+
+let timerAvviso;
+function avviso(testo, azione, fn) {
+  document.querySelector(".toast")?.remove();
+  clearTimeout(timerAvviso);
+  const t = el("div", { class: "toast", role: "status" }, el("span", {}, testo),
+    el("button", { onclick: () => { t.remove(); fn(); } }, azione));
+  document.body.append(t);
+  timerAvviso = setTimeout(() => t.remove(), 5000);
+}
+
+// Scheda di presentazione del film: ricerca Google (mostra trama, cast, trailer...).
+const schedaFilm = (k) => "https://www.google.com/search?q=" + encodeURIComponent(titoloDi(k) + " film");
+
+const ICONA_PIN = () => {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(ns, "path");
+  path.setAttribute("d", "M15 3l6 6-3 1-4 4 1 5-2 2-4-4-5 5-1-1 5-5-4-4 2-2 5 1 4-4z");
+  svg.append(path);
+  return svg;
+};
+
+function azioniFilm(k) {
+  const fiss = stato.fissati.has(k);
+  if (stato.nascosti.has(k)) {
+    return el("div", { class: "azioni" },
+      el("button", { class: "az rimetti", onclick: () => mostra(k), "aria-label": "Rimetti " + titoloDi(k) }, "Rimetti"));
+  }
+  return el("div", { class: "azioni" },
+    el("button", { class: "az pin", "aria-pressed": String(fiss), onclick: () => fissa(k),
+      "aria-label": (fiss ? "Togli dall'alto " : "Fissa in alto ") + titoloDi(k), title: fiss ? "Fissato in alto" : "Fissa in alto" }, ICONA_PIN()),
+    el("button", { class: "az nascondi", onclick: () => nascondi(k),
+      "aria-label": "Nascondi " + titoloDi(k), title: "Nascondi questo film" }, "✕"));
 }
 
 function disegnaVista() {
   document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.vista === stato.vista)));
   const box = $("#contenuto");
-  const sp = spettacoliFiltrati();
+  const { sp, nascostiOggi, vediNascosti } = spettacoliFiltrati();
   const attivi = stato.dati.cinema.filter((c) => !stato.esclusi.has(c.id));
 
   if (!attivi.length) {
     box.replaceChildren(el("div", { class: "stato" }, el("strong", {}, "Nessun cinema selezionato"), "Tocca i nomi dei cinema qui sopra per includerli."));
     return;
   }
+  const barraNascosti = nascostiOggi.size && !stato.q ? el("button", {
+    class: "mostra-passati nascosti-btn",
+    onclick: () => { stato.mostraNascosti = !stato.mostraNascosti; disegnaVista(); },
+  }, vediNascosti ? "Nascondi di nuovo i film tolti"
+    : `${nascostiOggi.size} ${nascostiOggi.size === 1 ? "film nascosto" : "film nascosti"} · Mostra`) : null;
+
   if (!sp.length) {
     box.replaceChildren(el("div", { class: "stato" },
       el("strong", {}, stato.q ? "Nessun risultato" : "Nessuna proiezione"),
-      stato.q ? `"${stato.q}" non è in programma in questo giorno nei cinema selezionati.` : "Nessun film in programma in questo giorno nei cinema selezionati."));
+      stato.q ? `"${stato.q}" non è in programma in questo giorno nei cinema selezionati.`
+        : nascostiOggi.size ? "Hai nascosto tutti i film in programma in questo giorno."
+          : "Nessun film in programma in questo giorno nei cinema selezionati."), barraNascosti || "");
     return;
   }
-  box.replaceChildren(stato.vista === "orari" ? vistaOrari(sp) : vistaTabella(sp, attivi));
+  box.replaceChildren(stato.vista === "orari" ? vistaOrari(sp) : vistaTabella(sp, attivi), barraNascosti || "");
 }
 
 function locandina(f, classe) {
@@ -172,7 +248,8 @@ function pill(s) {
   const titolo = [s.sala, ...(s.tag || []), eNotte(s.h) ? "notte" : null, pas ? "già iniziato" : null].filter(Boolean).join(" · ");
   const attrs = { class: "pill" + (pas ? " passato" : "") + (eNotte(s.h) ? " notte" : ""), title: titolo || null };
   const figli = [s.h, tag ? el("span", { class: "tg" }, tag) : null];
-  return s.url && !pas ? el("a", { ...attrs, href: s.url, target: "_blank", rel: "noopener" }, ...figli) : el("span", attrs, ...figli);
+  const link = s.p || s.url; // pagina del film in quel cinema (orari + acquisto), un passo prima del pagamento
+  return link && !pas ? el("a", { ...attrs, href: link, target: "_blank", rel: "noopener" }, ...figli) : el("span", attrs, ...figli);
 }
 
 function vistaTabella(sp, attivi) {
@@ -185,17 +262,19 @@ function vistaTabella(sp, attivi) {
   }
   const colonne = attivi.filter((c) => sp.some((s) => s.c === c.id));
   const senza = attivi.filter((c) => !colonne.includes(c));
-  const righe = [...new Set(sp.map((s) => s.k))].sort((a, b) => (film[a]?.titolo || a).localeCompare(film[b]?.titolo || b, "it"));
+  const righe = [...new Set(sp.map((s) => s.k))].sort(ordinaFilm);
 
   const tabella = el("table", { class: "tabella" },
     el("thead", {}, el("tr", {},
       el("th", { class: "angolo" }, `${righe.length} film`),
       ...colonne.map((c) => el("th", { scope: "col" }, el("span", { class: "cn" }, c.nome), el("span", { class: "cz" }, c.zona))))),
-    el("tbody", {}, ...righe.map((k) => el("tr", {},
+    el("tbody", {}, ...righe.map((k) => el("tr", { class: [stato.fissati.has(k) && "fissato", stato.nascosti.has(k) && "nascosto"].filter(Boolean).join(" ") || null },
       el("th", { scope: "row", class: "film-th" },
-        locandina(film[k], "poster"),
-        el("span", { class: "tit" }, film[k]?.titolo || k),
-        film[k]?.durata ? el("span", { class: "dur" }, film[k].durata.replace(" Minuti", " min")) : null),
+        el("a", { class: "scheda", href: schedaFilm(k), target: "_blank", rel: "noopener", title: "Scheda del film" },
+          locandina(film[k], "poster"),
+          el("span", { class: "tit" }, film[k]?.titolo || k)),
+        film[k]?.durata ? el("span", { class: "dur" }, film[k].durata.replace(" Minuti", " min")) : null,
+        azioniFilm(k)),
       ...colonne.map((c) => {
         const lista = (perCella.get(k + "|" + c.id) || []).sort((a, b) => chiaveOra(a.h).localeCompare(chiaveOra(b.h)));
         return lista.length ? el("td", {}, el("div", { class: "pills" }, lista.map(pill))) : el("td", { class: "vuota" });
@@ -224,15 +303,18 @@ function vistaOrari(sp) {
     const pas = passato(s);
     const dettagli = [el("b", {}, cinema[s.c]?.nome || s.c), s.sala ? " · " + s.sala : null,
       s.tag?.length ? el("span", { class: "tg" }, " · " + s.tag.join(" · ")) : null];
-    const corpo = [
-      el("span", { class: "ora" }, s.h),
-      f?.locandina ? el("img", { class: "mini", src: f.locandina, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }) : null,
-      el("div", { class: "info" }, el("div", { class: "rt" }, f?.titolo || s.k), el("div", { class: "rc" }, ...dettagli)),
-      s.url && !pas ? el("span", { class: "freccia", "aria-hidden": "true" }, "›") : null,
-    ];
-    ul.append(el("li", {}, s.url && !pas
-      ? el("a", { class: "riga", href: s.url, target: "_blank", rel: "noopener" }, ...corpo)
-      : el("div", { class: "riga" + (pas ? " passato" : "") }, ...corpo)));
+    const link = s.p || s.url;
+    const ora = link && !pas
+      ? el("a", { class: "ora", href: link, target: "_blank", rel: "noopener", title: "Orari e biglietti" }, s.h)
+      : el("span", { class: "ora" }, s.h);
+    const img = f?.locandina || f?.immagine;
+    ul.append(el("li", {}, el("div", { class: "riga" + (pas ? " passato" : "") + (stato.nascosti.has(s.k) ? " nascosto" : "") },
+      ora,
+      el("a", { class: "scheda", href: schedaFilm(s.k), target: "_blank", rel: "noopener", title: "Scheda del film" },
+        img ? el("img", { class: "mini" + (f.locandina ? "" : " largo"), src: img, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }) : el("span", { class: "mini vuota" }),
+        el("div", { class: "info" },
+          el("div", { class: "rt" }, stato.fissati.has(s.k) ? el("span", { class: "pin-segno", title: "Fissato" }, ICONA_PIN()) : null, f?.titolo || s.k),
+          el("div", { class: "rc" }, ...dettagli))))));
   }
   const fr = document.createDocumentFragment();
   if (giaIniziati.length) {

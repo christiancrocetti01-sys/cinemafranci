@@ -234,6 +234,42 @@ button { font: inherit; color: inherit; }
 .film-th .poster.largo { width: 100%; aspect-ratio: 16 / 10; }
 .film-th .tit { display: block; font-size: 13px; line-height: 1.2; text-transform: uppercase; letter-spacing: .2px; color: #cfe0ee; overflow-wrap: anywhere; }
 .film-th .dur { display: block; font-size: 11px; color: var(--testo-3); font-weight: 500; margin-top: 3px; }
+.film-th .scheda { display: block; color: inherit; text-decoration: none; }
+.film-th .scheda:active .tit { color: var(--accento-2); }
+
+/* Pulsantini sotto la locandina: fissa in alto / nascondi */
+.azioni { display: flex; gap: 6px; margin-top: 8px; }
+.az {
+  width: 32px; height: 28px;
+  display: grid; place-items: center;
+  border-radius: 8px;
+  border: 1px solid var(--linea);
+  background: var(--bg-2);
+  color: var(--testo-3);
+  font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+.az svg { width: 15px; height: 15px; fill: currentColor; }
+.az.pin[aria-pressed="true"] { color: var(--oro); border-color: var(--oro); background: rgba(255, 200, 97, .12); }
+.az.rimetti { width: auto; padding: 0 10px; color: var(--accento); border-color: var(--accento); font-size: 12px; }
+.tabella tbody tr.fissato th { box-shadow: inset 3px 0 0 var(--oro); }
+.tabella tbody tr.nascosto th > :not(.azioni), .tabella tbody tr.nascosto td { opacity: .4; }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(46px + var(--safe-b)); transform: translateX(-50%);
+  z-index: 20;
+  display: flex; align-items: center; gap: 14px;
+  max-width: calc(100% - 32px);
+  padding: 10px 10px 10px 16px;
+  border-radius: 14px;
+  background: #1b3a52; color: var(--testo);
+  font-size: 14px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, .45);
+}
+.toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast button { flex: none; border: 0; background: none; color: var(--accento-2); font-weight: 700; padding: 6px 8px; cursor: pointer; }
+.nascosti-btn { margin: 14px auto 18px; }
 
 .pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .pill {
@@ -286,8 +322,13 @@ a.pill:active { background: var(--accento-bg); }
 .riga .rc { font-size: 12.5px; color: var(--testo-2); margin-top: 2px; }
 .riga .rc b { color: var(--accento-2); font-weight: 600; }
 .riga .rc .tg { color: var(--oro); font-weight: 600; }
-.riga .freccia { color: var(--testo-3); font-size: 18px; }
-.riga.passato { opacity: .45; }
+.riga .scheda { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; color: inherit; text-decoration: none; }
+.riga a.ora { color: inherit; text-decoration: none; }
+a.ora:active { background: var(--accento-bg); }
+.riga .mini.largo { aspect-ratio: 1; }
+.riga .mini.vuota { display: block; }
+.pin-segno svg { width: 12px; height: 12px; fill: var(--oro); margin-right: 5px; vertical-align: -1px; }
+.riga.passato, .riga.nascosto { opacity: .45; }
 .mostra-passati { display: block; margin: 8px auto 0; border: 1px dashed var(--linea); background: none; color: var(--testo-2); padding: 8px 14px; border-radius: 999px; font-size: 13px; cursor: pointer; }
 
 @media (min-width: 760px) {

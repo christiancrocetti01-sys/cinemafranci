@@ -1,5 +1,5 @@
 // Service worker: fa funzionare l'app anche offline (con gli ultimi orari scaricati).
-const VERSIONE = "cf-v1";
+const VERSIONE = "cf-v2";
 const GUSCIO = ["./", "index.html", "style.css", "app.js", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {

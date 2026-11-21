@@ -162,7 +162,8 @@ def da_comingsoon(cin, rif):
         film[idf] = info
 
     for idf, info in film.items():
-        bigl = scarica(f"{CS}{cin['path']}ticket/?idf={idf}")
+        pagina_film = f"{CS}{cin['path']}ticket/?idf={idf}"  # orari di quel film in quel cinema + acquisto
+        bigl = scarica(pagina_film)
         i = bigl.find('id="salaFilmList"')
         if i < 0:
             continue
@@ -178,7 +179,8 @@ def da_comingsoon(cin, rif):
                     giorno = data_da(t.group(1), t.group(2), rif)
                 elif giorno:
                     attr = t.group(3)
-                    s = {"k": chiave_film(info["titolo"]), "d": giorno.isoformat(), "h": t.group(4).zfill(5)}
+                    s = {"k": chiave_film(info["titolo"]), "d": giorno.isoformat(), "h": t.group(4).zfill(5),
+                         "p": pagina_film}
                     sala = re.search(r'title="([^"]*)"', attr)
                     if sala and sala.group(1).strip():
                         s["sala"] = sala.group(1).strip().title()
@@ -234,6 +236,8 @@ def da_italia(cin, rif):
             trovati = []
         if not trovati:
             trovati = spettacoli_da_righe(righe(card), k, rif)
+        for s in trovati:
+            s["p"] = url
         if trovati:
             film.append(info)
             spett += trovati
@@ -299,6 +303,7 @@ def da_girone(cin, rif):
                                         "h": f"{int(d.group(4)):02d}:{d.group(5)}"})
                     break
         for s in trovati:
+            s["p"] = url
             if tag:
                 s["tag"] = tag
         if trovati:

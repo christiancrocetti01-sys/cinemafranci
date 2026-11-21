@@ -37,6 +37,13 @@ L'amico ha mandato uno screenshot della pagina "FILM IN SALA" del sito di un cin
 - Da valutare: su telefono con tanti cinema la tabella va scorsa in orizzontale (prima colonna fissa)
   oppure va trasformata in schede/lista. Il filtro per film o cinema riduce righe e colonne.
 
+## Feedback dell'amico (vocali del 21/11/2026) → fatto il 21/11
+- La grafica gli piace così.
+- Sotto ogni locandina: **📌 fissa** (il film resta sempre in cima, tutti i giorni) e **✕ nascondi** (sparisce dalla vista).
+- Orario: invece di andare dritto al pagamento, meglio la **pagina del film "un passo prima"** (deciso con Christian:
+  pagina ComingSoon con gli orari di quel film in quel cinema + pulsanti d'acquisto; Italia e Girone → pagina del film sul loro sito).
+- Toccando **titolo/locandina** → scheda di presentazione del film (ricerca Google "titolo film").
+
 ## Cinema scelti (lista ricevuta 20/11/2026) e fonte dati
 Analisi fatta il 20/11/2026. **Fonte principale: ComingSoon.it** (un solo scraper per 6 cinema).
 
@@ -95,6 +102,7 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
 - Teatro Italia: se scheda riassuntiva e pagina del film non coincidono (succede!), vale la pagina del film.
 
 ## Stato attuale
+- Fatto (21/11): pin/nascondi film, orario → pagina del film, titolo → Google (feedback dell'amico).
 - Fatto (20/11): scraper funzionante su 8/8 cinema (~20 film, ~500 spettacoli, ~1,5 min), sito mobile con vista Tabella e vista Orari,
   PWA (manifest + service worker + icone), workflow di aggiornamento e pubblicazione.
 - Da fare: farlo provare all'amico e raccogliere il suo feedback.
@@ -104,7 +112,7 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
 - `scraper/scrape.py`: solo libreria standard. Lista `CINEMA` (id, nome, zona, sito, fonte, path ComingSoon). Fonti: `da_comingsoon`,
   `da_italia`, `da_girone`. Uscita: `site/data/programmazione.json` =
   `{generato, cinema:[{id,nome,zona,sito}], film:{chiave:{titolo,locandina|immagine,genere,durata}},
-  spettacoli:[{k:chiave film, c:id cinema, d:"YYYY-MM-DD", h:"HH:MM", sala?, tag?:[...], url?}], aggiornato:{id:iso}, errori:{id:msg}}`.
+  spettacoli:[{k:chiave film, c:id cinema, d:"YYYY-MM-DD", h:"HH:MM", p:pagina del film in quel cinema, sala?, tag?:[...], url?:acquisto}], aggiornato:{id:iso}, errori:{id:msg}}`.
   - `chiave_film()` normalizza i titoli (accenti, punteggiatura, O.V./IMAX) per unire lo stesso film tra cinema diversi.
   - `--prev URL`: se un cinema fallisce si riusano i suoi spettacoli della pubblicazione precedente (e l'errore appare nel piè di pagina).
   - Prova in locale: `python3 scraper/scrape.py` poi `cd site && python3 -m http.server`.
@@ -112,7 +120,11 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
   - Vista **Tabella**: righe = film (alfabetico), colonne = cinema attivi che hanno spettacoli quel giorno, celle = pillole orarie
     (link d'acquisto se c'è). Prima colonna e intestazione fisse.
   - Vista **Orari**: elenco cronologico per fasce (mattina/pomeriggio/sera/notte), nasconde quelli già iniziati (pulsante per mostrarli).
-  - Ricerca: più film separati da virgola. Cinema esclusi e vista scelta salvati in localStorage.
+  - Ricerca: più film separati da virgola. Cinema esclusi, vista scelta, film fissati e nascosti salvati in localStorage
+    (`cf.esclusi`, `cf.vista`, `cf.fissati`, `cf.nascosti`, per chiave film).
+  - Film fissati: in cima alla Tabella (bordo oro), 📌 nella vista Orari. Nascosti: spariscono da entrambe le viste,
+    avviso "Annulla" per 5 s, pulsante "N film nascosti · Mostra" in fondo (con "Rimetti"); cercandoli per nome si vedono comunque.
+  - Pillola orario → `p` (pagina del film in quel cinema), altrimenti `url`. Titolo/locandina → ricerca Google.
   - Spettacoli prima delle 05:00 = notte del giorno indicato (ordinati in fondo, pillola tratteggiata "notte").
   - Stile ispirato al sito del Fiorella: blu notte, accento #3ab0ff, font Outfit, pillole con bordo.
 - `.github/workflows/aggiorna.yml`: alle 5:17, 11:17 e 16:17 UTC + a ogni push su main + manuale → scraper → deploy Pages.

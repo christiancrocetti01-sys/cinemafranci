@@ -360,6 +360,9 @@ def main():
         print(f"→ {cin['nome']}…", file=sys.stderr)
         try:
             lista, sp = FONTI[cin["fonte"]](cin, rif)
+            if not sp:  # a volte la fonte è vuota per poco (es. ComingSoon mentre aggiorna): si riprova
+                time.sleep(60)
+                lista, sp = FONTI[cin["fonte"]](cin, rif)
             if not sp:
                 raise RuntimeError("nessuno spettacolo trovato")
             for info in lista:

@@ -2,8 +2,9 @@ name: Aggiorna orari e pubblica
 
 on:
   schedule:
-    # orari UTC: circa 6:20, 12:20 e 17:20 in Italia (ora solare)
-    - cron: "17 5,11,16 * * *"
+    # Ogni ora dalle 5:17 alle 23:17 italiane (ora solare). GitHub ritarda o salta spesso
+    # le esecuzioni programmate (nei primi giorni: 1-2 al giorno invece di 3), quindi meglio abbondare.
+    - cron: "17 4-22 * * *"
   push:
     branches: [main]
   workflow_dispatch:

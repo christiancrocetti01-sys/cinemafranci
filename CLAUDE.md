@@ -107,6 +107,8 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
 - Fatto (21/11): pin/nascondi film, orario → pagina del film, titolo → Google (feedback dell'amico).
 - Fatto (20/11): scraper funzionante su 8/8 cinema (~20 film, ~500 spettacoli, ~1,5 min), sito mobile con vista Tabella e vista Orari,
   PWA (manifest + service worker + icone), workflow di aggiornamento e pubblicazione.
+- Fatto (24/11): "non aggiorna" → cron GitHub inaffidabile (passato a ogni ora); Marconi vuoto su ComingSoon
+  per qualche ora il 22–23/11 (errore temporaneo) → se una fonte è vuota si riprova dopo 60 s.
 - Da fare: farlo provare all'amico e raccogliere il suo feedback.
 - Idee possibili: pagina/scheda del film, filtro "dalle ore", aggiungere altri cinema (basta il path ComingSoon in `CINEMA`).
 
@@ -129,7 +131,8 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
   - Pillola orario → `p` (pagina del film in quel cinema), altrimenti `url`. Titolo/locandina → ricerca Google.
   - Spettacoli prima delle 05:00 = notte del giorno indicato (ordinati in fondo, pillola tratteggiata "notte").
   - Stile ispirato al sito del Fiorella: blu notte, accento #3ab0ff, font Outfit, pillole con bordo.
-- `.github/workflows/aggiorna.yml`: alle 5:17, 11:17 e 16:17 UTC + a ogni push su main + manuale → scraper → deploy Pages.
+- `.github/workflows/aggiorna.yml`: ogni ora 4:17–22:17 UTC + a ogni push su main + manuale → scraper → deploy Pages.
+  (24/11: con 3 orari fissi GitHub ne eseguiva solo 1-2 al giorno, con ore di ritardo → passato a ogni ora.)
 
 ## Note tecniche
 - Branch di sviluppo: `claude/relaxed-tesla-obj9y3`.

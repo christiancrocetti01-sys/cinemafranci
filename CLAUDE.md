@@ -115,8 +115,9 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
      controllano anche i film della pagina città `/cinema/firenze/` e quelli trovati lì nella pubblicazione precedente
      (`prepara_extra`). Lo scraper ora dura ~3,5 min (~200 richieste).
   2. **Aggiornamenti**: anche con cron ogni ora GitHub esegue solo ~2 run al giorno (verso le 14 e le 23 UTC).
-     Soluzione: avvio esterno con cron-job.org che chiama l'API `workflow_dispatch` (vedi `docs/aggiornamento-esterno.md`),
-     da configurare da parte di Christian.
+     Soluzione: avvio esterno con cron-job.org che chiama l'API `workflow_dispatch` (vedi `docs/aggiornamento-esterno.md`).
+     **Configurato e testato da Christian il 28/11** (risposta 204, run partito). Token fine-grained con scadenza:
+     quando scade gli aggiornamenti tornano ~2 al giorno → rigenerarlo e aggiornare l'header su cron-job.org.
 - Da fare: farlo provare all'amico e raccogliere il suo feedback.
 - Idee possibili: pagina/scheda del film, filtro "dalle ore", aggiungere altri cinema (basta il path ComingSoon in `CINEMA`).
 

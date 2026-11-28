@@ -21,6 +21,7 @@ esterno gratuito (cron-job.org) fa partire l'aggiornamento ogni ora.
      - `Authorization`: `Bearer github_pat_...` (il token del punto 1)
      - `Accept`: `application/vnd.github+json`
      - `X-GitHub-Api-Version`: `2022-11-28`
+     - `Content-Type`: `application/json` (senza, il test dava 422)
    - Request body: `{"ref":"main"}`
 5. Salva e premi *Test run*: deve rispondere **204**. Poi su GitHub → Actions dovresti vedere
    partire "Aggiorna orari e pubblica" (evento `workflow_dispatch`).

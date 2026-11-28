@@ -18,6 +18,7 @@ import re
 import sys
 import time
 import unicodedata
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -31,22 +32,24 @@ PAUSA = 0.4  # secondi tra una richiesta e l'altra, per essere educati
 CINEMA = [
     {"id": "uci", "nome": "UCI Campi Bisenzio", "zona": "Campi Bisenzio",
      "sito": "https://ucicinemas.it/cinema/uci-cinemas-campi-bisenzio-firenze",
-     "fonte": "comingsoon", "path": "/cinema/firenze/uci-cinemas-campi-bisenzio/2510/"},
+     "fonte": "comingsoon", "path": "/cinema/firenze/uci-cinemas-campi-bisenzio/2510/",
+     "mymovies": "https://www.mymovies.it/cinema/firenze/campibisenzio/5748/"},
     {"id": "space", "nome": "The Space Novoli", "zona": "Firenze",
      "sito": "https://www.thespacecinema.it/cinema/firenze/al-cinema",
-     "fonte": "comingsoon", "path": "/cinema/firenze/the-space-cinema-firenze-novoli/5396/"},
+     "fonte": "comingsoon", "path": "/cinema/firenze/the-space-cinema-firenze-novoli/5396/",
+     "mymovies": "https://www.mymovies.it/cinema/firenze/21354/"},
     {"id": "fiorella", "nome": "Fiorella", "zona": "Firenze",
      "sito": "https://www.circuitocinema.com/cinema/fiorella/",
-     "fonte": "comingsoon", "path": "/cinema/firenze/fiorella/1400/"},
+     "fonte": "comingsoon", "path": "/cinema/firenze/fiorella/1400/", "ufficiale": "fiorella"},
     {"id": "marconi", "nome": "Marconi", "zona": "Firenze",
      "sito": "https://www.staseraalcinema.it/multisala-marconi/",
-     "fonte": "comingsoon", "path": "/cinema/firenze/marconi/1411/"},
+     "fonte": "comingsoon", "path": "/cinema/firenze/marconi/1411/", "ufficiale": "stasera"},
     {"id": "principe", "nome": "Principe", "zona": "Firenze",
      "sito": "https://www.staseraalcinema.it/multisala-principe/",
-     "fonte": "comingsoon", "path": "/cinema/firenze/principe/1415/"},
+     "fonte": "comingsoon", "path": "/cinema/firenze/principe/1415/", "ufficiale": "stasera"},
     {"id": "portico", "nome": "Il Portico", "zona": "Firenze",
      "sito": "https://www.cinemailportico.it/programmazione.php",
-     "fonte": "comingsoon", "path": "/cinema/firenze/portico/1414/"},
+     "fonte": "comingsoon", "path": "/cinema/firenze/portico/1414/", "ufficiale": "portico"},
     {"id": "italia", "nome": "Teatro Italia", "zona": "Pontassieve",
      "sito": "https://www.teatrocinemaitalia.it/programma/cinema/",
      "fonte": "italia"},
@@ -67,7 +70,8 @@ ORA_RE = re.compile(r"\b([01]?\d|2[0-3])[.:]([0-5]\d)\b")
 # ---------------------------------------------------------------- utilità
 
 def oggi():
-    return dt.datetime.now(ROMA).date()
+    # Fino alle 5 di notte vale ancora la "giornata" di ieri (spettacoli dopo mezzanotte).
+    return (dt.datetime.now(ROMA) - dt.timedelta(hours=5)).date()
 
 
 def scarica(url):
@@ -124,7 +128,29 @@ def titolo_leggibile(t):
     t = re.sub(r"\s+", " ", t).strip()
     if t.isupper():  # "SE DOMANI NON TORNO" -> "Se domani non torno"
         t = t.capitalize()
-    return t
+    return re.sub(r"(?<=[a-zà-ÿ])[À-Þ]", lambda m: m.group().lower(), t)  # "SuccederÀ" -> "Succederà"
+
+
+# Code nei titoli dei siti ufficiali: "WILD HORSE NINE - Dal 5 Novembre.", "MUSTANG - Evento in REPLICA da ...",
+# "Succederà questa notte - Ospiti in sala". "Lorenzo - L'incredibile avventura..." invece resta com'è.
+CODA_RE = re.compile(r"(?:\s+[-–]\s+(?:dal\b|da\s+(?:\d|oggi|" + GIORNI_RE + r")|evento\b|in replica\b|anteprima\b|"
+                     r"solo\b|ultimi giorni\b)|\s*[-–:]?\s+ospiti in sala\b).*$", re.I)
+
+
+def titolo_ufficiale(t):
+    """Titolo dal sito di un cinema -> (titolo pulito, tag extra)."""
+    t = testo_pulito(t)
+    tag = ["Ospiti in sala"] if re.search(r"ospiti in sala", t, re.I) else []
+    return titolo_leggibile(CODA_RE.sub("", t).rstrip(" .")), tag
+
+
+def data_da_numero(giorno, rif):
+    """Solo il giorno del mese (es. "Mar 01"): la data con quel numero più vicina a oggi."""
+    for delta in range(-10, 21):
+        d = rif + dt.timedelta(days=delta)
+        if d.day == int(giorno):
+            return d
+    raise ValueError(f"giorno {giorno} non riconosciuto")
 
 
 def etichette(versione):
@@ -226,18 +252,223 @@ def da_comingsoon(cin, rif):
                         s["tag"] = tag
                     spett.append(s)
                     con_spettacoli.add(idf)
-    return [film[i] for i in film if i in con_spettacoli], spett
+    return [dict(film[i], _cs=True) for i in film if i in con_spettacoli], spett
+
+
+# ---------------------------------------------------------------- siti ufficiali (Fiorella, Marconi, Principe, Portico)
+# ComingSoon non conosce i film che un cinema proietta solo nei giorni dopo (se oggi non sono in nessun
+# cinema di Firenze) né gli eventi lontani (es. "ospiti in sala" fra 2 settimane), e a volte salta un orario.
+# Dove il sito del cinema si legge bene vale quello; ComingSoon aggiunge sala e link d'acquisto.
+
+def nuovo_spettacolo(k, giorno, ora, pagina, url=None, tag=None):
+    s = {"k": k, "d": giorno.isoformat(), "h": ora.zfill(5), "p": pagina}
+    if url:
+        s["url"] = url
+    if tag:
+        s["tag"] = tag
+    return s
+
+
+def da_fiorella(cin, rif):
+    """circuitocinema.com: tabella "Film in sala" con righe = film e colonne = giorni."""
+    pagina = scarica(cin["sito"])
+    date = [data_da(g, m, rif) for g, m in re.findall(r'<span class="dm">(\d{1,2})\s+([A-Za-zì]+)</span>', pagina)]
+    if not date:
+        raise RuntimeError("tabella degli orari non trovata")
+    film, spett = [], []
+    for riga in pagina.split('<th class="headcol">')[1:]:
+        tit = re.search(r'<h6 class="title">(.*?)</h6>', riga, re.S)
+        if not tit:
+            continue
+        titolo, tag = titolo_ufficiale(tit.group(1))
+        tag += [testo_pulito(t).capitalize() for t in re.findall(r'<span class="tag"[^>]*>(.*?)</span>', riga, re.S)
+                if testo_pulito(t).capitalize() not in tag]
+        k = chiave_film(titolo)
+        link = re.search(r'<a class="movie" href="([^"]+)"', riga)
+        info = {"titolo": titolo}
+        img = re.search(r'<img class="cover" src="([^"]+)"', riga)
+        if img:
+            info["locandina"] = html.unescape(img.group(1))
+        celle = riga.split("</th>", 1)[-1].split('<td class="col">')[1:]
+        if len(celle) != len(date):
+            raise RuntimeError(f"{titolo}: {len(celle)} colonne invece di {len(date)}")
+        trovati = [nuovo_spettacolo(k, d, h, link.group(1) if link else cin["sito"], html.unescape(u).split("#")[0], tag)
+                   for d, cella in zip(date, celle)
+                   for u, h in re.findall(r'<a class="time" href="([^"]+)"[^>]*>\s*(\d{1,2}:\d{2})\s*</a>', cella)]
+        if trovati:
+            film.append(info)
+            spett += trovati
+    return film, spett
+
+
+def da_stasera(cin, rif):
+    """staseraalcinema.it (Marconi, Principe): una pagina per giorno, ?d=AAAA-MM-GG 00:00:00."""
+    base = cin["sito"]
+    pagina = scarica(base)
+    giorni = sorted(set(re.findall(r"\?d=(\d{4}-\d\d-\d\d) 00:00:00", pagina)))
+    if not giorni:
+        raise RuntimeError("elenco dei giorni non trovato")
+    film, spett = {}, []
+    for g in giorni:
+        p = scarica(base + "?d=" + urllib.parse.quote(g + " 00:00:00"))
+        if not re.search(r"\?d=" + g + r" 00:00:00'><div class='bott_date_scheda_at'", p):
+            raise RuntimeError(f"la pagina del {g} non mostra quel giorno")
+        pezzi = p[p.find("Seleziona giorno"):].split("<h5 ")
+        for prima, blocco in zip(pezzi, pezzi[1:]):
+            tit = re.search(r"<a href='(/scheda-film/[^']+)'[^>]*title='Vai alla Scheda del Film'[^>]*>([^<]+)</a>", blocco)
+            if not tit:
+                continue
+            titolo, tag = titolo_ufficiale(tit.group(2))
+            k = chiave_film(titolo)
+            scheda = urllib.parse.urljoin(base, html.unescape(tit.group(1)))
+            for u, h in re.findall(r"(?:<a href='([^']+)'\s*>)?<div class='bott_orari[^']*'>\s*(\d{1,2}:\d{2})\s*</div>", blocco):
+                spett.append(nuovo_spettacolo(k, dt.date.fromisoformat(g), h, scheda,
+                                              urllib.parse.urljoin(base, html.unescape(u)) if u else None, tag))
+                if k not in film:
+                    film[k] = {"titolo": titolo}
+                    img = re.findall(r"<img src='(https://secure\.webtic\.it/HandlerLocandina[^']+)'", prima)
+                    if img:
+                        film[k]["locandina"] = html.unescape(img[-1])
+    return list(film.values()), spett
+
+
+def da_portico(cin, rif):
+    """cinemailportico.it/programmazione.php: una scheda per giorno della settimana (#thu, #fri, ...)."""
+    pagina = scarica(cin["sito"])
+    schede = re.findall(r'<a href="#(\w+)" class="giorno_w_\d">\s*\w+\s+(\d{1,2})\s*</a>', pagina)
+    if not schede:
+        raise RuntimeError("giorni non trovati")
+    inizi = []
+    for ancora, g in schede:
+        i = pagina.find(f"<div id='{ancora}'>")
+        if i < 0:
+            raise RuntimeError(f"scheda {ancora} non trovata")
+        inizi.append((i, data_da_numero(g, rif)))
+    inizi.sort()
+    film, spett = {}, []
+    for n, (i, giorno) in enumerate(inizi):
+        blocco = pagina[i:inizi[n + 1][0] if n + 1 < len(inizi) else len(pagina)]
+        for f in blocco.split("<div class='row movie-tabs'>")[1:]:
+            tit = re.search(r"<h3 class='no-underline'>(.*?)</h3>", f, re.S)
+            if not tit:
+                continue
+            titolo, tag = titolo_ufficiale(tit.group(1))
+            k = chiave_film(titolo)
+            link = re.search(r"href='(film-singolo\.php[^']+)'", f)
+            scheda = urllib.parse.urljoin(cin["sito"], html.unescape(link.group(1))) if link else cin["sito"]
+            for h, versione in re.findall(r"<span class='time'>\s*(\d{1,2}:\d{2})\s*(?:<b>(.*?)</b>)?\s*</span>", f):
+                spett.append(nuovo_spettacolo(k, giorno, h, scheda, None, tag + etichette(versione)))
+                if k not in film:
+                    film[k] = {"titolo": titolo}
+                    img = re.search(r"<img itemprop='image' src='([^']+)'", f)
+                    if img:
+                        film[k]["locandina"] = html.unescape(img.group(1))
+    return list(film.values()), spett
+
+
+UFFICIALI = {"fiorella": da_fiorella, "stasera": da_stasera, "portico": da_portico}
+
+
+def unisci(uff_film, uff_sp, cs_film, cs_sp):
+    """Orari del sito ufficiale + dettagli di ComingSoon (sala, acquisto, versione) quando lo spettacolo coincide.
+    I giorni che il sito ufficiale non elenca affatto si prendono da ComingSoon."""
+    cs = {}
+    for s in cs_sp:
+        cs.setdefault((s["k"], s["d"], s["h"]), s)
+    for s in uff_sp:
+        c = cs.get((s["k"], s["d"], s["h"]))
+        if not c:
+            continue
+        s["p"] = c["p"]  # pagina ComingSoon del film in quel cinema: orari + pulsanti d'acquisto
+        for campo in ("sala", "url"):
+            if campo in c:
+                s.setdefault(campo, c[campo])
+        tag = s.get("tag", []) + [t for t in c.get("tag", []) if t not in s.get("tag", [])]
+        if tag:
+            s["tag"] = tag
+    giorni_uff = {s["d"] for s in uff_sp}
+    return uff_film + cs_film, uff_sp + [s for s in cs_sp if s["d"] not in giorni_uff]
+
+
+# ---------------------------------------------------------------- MyMovies (riserva per UCI e The Space, solo oggi)
+
+def da_mymovies(cin, rif):
+    """Spettacoli di oggi su MyMovies (pagina del cinema): film con titolo in maiuscolo, poi gli orari."""
+    pagina = scarica(cin["mymovies"])
+    titoli = [m for m in re.finditer(r'<a href="(https://www\.mymovies\.it/film/[^"]+)" title="([^"]+)">([^<]+)</a>', pagina)
+              if m.group(3).strip().isupper()]
+    film = []
+    for m, dopo in zip(titoli, titoli[1:] + [None]):
+        corpo = pagina[m.end():dopo.start() if dopo else len(pagina)]
+        ore = sorted({h.zfill(5) for h in re.findall(r'<span class="mm-medium mm-weight-700">\s*(\d{1,2}:\d{2})\s*</span>', corpo)})
+        if ore:
+            info = {"titolo": titolo_leggibile(html.unescape(m.group(2)))}
+            img = re.findall(r'class="poster-schedina[^"]*"[^>]*src="([^"]+)"', pagina[max(0, m.start() - 3000):m.start()])
+            if img:
+                info["locandina"] = img[-1]
+            film.append((info, ore))
+    return film
+
+
+def integra_mymovies(cin, rif, cs_film, cs_sp):
+    """Aggiunge i film di OGGI che MyMovies ha e ComingSoon no (es. "La luce del mondo" al The Space il 28/11).
+    Si aggiungono solo gli spettacoli non ancora iniziati (ComingSoon toglie quelli già iniziati, quindi
+    il confronto si fa su quelli) e solo se non sono lo stesso film con un titolo scritto diversamente."""
+    oggi_iso = rif.isoformat()
+    adesso = dt.datetime.now(ROMA).strftime("%H:%M")
+    if dt.datetime.now(ROMA).date() != rif:  # dopo mezzanotte: MyMovies mostra già il giorno nuovo
+        return cs_film, cs_sp
+    ore_cs = {}
+    for s in cs_sp:
+        if s["d"] == oggi_iso:
+            ore_cs.setdefault(s["k"], set()).add(s["h"])
+    film, spett = list(cs_film), list(cs_sp)
+    for info, ore in da_mymovies(cin, rif):
+        k = chiave_film(info["titolo"])
+        future = [h for h in ore if h >= adesso and h >= "05:00"]
+        if not future or k in ore_cs or any(set(future) <= v for v in ore_cs.values()):
+            continue
+        print(f"   + da MyMovies: {info['titolo']} {future}", file=sys.stderr)
+        film.append(info)
+        spett += [nuovo_spettacolo(k, rif, h, cin["mymovies"]) for h in future]
+    return film, spett
+
+
+def da_cinema_cs(cin, rif):
+    """Cinema presenti su ComingSoon, con eventuale sito ufficiale o MyMovies a integrare."""
+    try:
+        cs_film, cs_sp = da_comingsoon(cin, rif)
+        errore_cs = None
+    except Exception as e:
+        cs_film, cs_sp, errore_cs = [], [], e
+    if cin.get("ufficiale"):
+        try:
+            uff_film, uff_sp = UFFICIALI[cin["ufficiale"]](cin, rif)
+            if uff_sp:
+                print(f"   sito ufficiale: {len(uff_sp)} spettacoli, ComingSoon: {len(cs_sp)}", file=sys.stderr)
+                return unisci(uff_film, uff_sp, cs_film, cs_sp)
+            print("   sito ufficiale vuoto: uso solo ComingSoon", file=sys.stderr)
+        except Exception as e:
+            print(f"   sito ufficiale non letto ({type(e).__name__}: {e}): uso solo ComingSoon", file=sys.stderr)
+    if errore_cs:
+        raise errore_cs
+    if cin.get("mymovies"):
+        try:
+            return integra_mymovies(cin, rif, cs_film, cs_sp)
+        except Exception as e:
+            print(f"   MyMovies non letto ({type(e).__name__}: {e})", file=sys.stderr)
+    return cs_film, cs_sp
 
 
 # ---------------------------------------------------------------- Teatro Italia (Pontassieve)
 
 def spettacoli_da_righe(linee, chiave, rif, richiedi_ore=False):
     """Righe tipo 'Venerdì 20 novembre' seguite da '19:00 in sala piccola' / 'Ore 19.00 in sala grande'."""
-    out, giorno = [], None
+    out, giorno, altre = [], None, 0
     for r in linee:
         d = DATA_RE.fullmatch(r.rstrip(":"))
         if d:
-            giorno = data_da(d.group(1), d.group(2), rif)
+            giorno, altre = data_da(d.group(1), d.group(2), rif), 0
             continue
         o = re.fullmatch(r"(ore\s*)?([01]?\d|2[0-3])[.:]([0-5]\d)(?:\s+(?:in\s+)?(.*))?", r, re.I)
         if o and giorno and (o.group(1) or not richiedi_ore):
@@ -245,8 +476,13 @@ def spettacoli_da_righe(linee, chiave, rif, richiedi_ore=False):
             if o.group(4):
                 s["sala"] = o.group(4).strip().capitalize()
             out.append(s)
+            altre = 0
         else:
-            giorno = None
+            # Una nota sotto un orario ("evento speciale Disney: vestiti da strega...") non chiude il giorno:
+            # il 28/11 si perdeva così "Hexe" delle 18:00. Si chiude dopo 2 righe di seguito senza orari.
+            altre += 1
+            if altre > 2:
+                giorno = None
     return out
 
 
@@ -348,7 +584,7 @@ def da_girone(cin, rif):
     return film, spett
 
 
-FONTI = {"comingsoon": da_comingsoon, "italia": da_italia, "girone": da_girone}
+FONTI = {"comingsoon": da_cinema_cs, "italia": da_italia, "girone": da_girone}
 
 
 # ---------------------------------------------------------------- main
@@ -382,13 +618,13 @@ def main():
     spettacoli = []
     errori, aggiornato = {}, {}
 
-    def aggiungi_film(info, da_comingsoon):
+    def aggiungi_film(info):
         k = chiave_film(info["titolo"])
         if k not in film:
             film[k] = dict(info)
         else:  # i dati di ComingSoon (titolo e locandina) hanno la precedenza
             for c, v in info.items():
-                if c not in film[k] or (da_comingsoon and c in ("titolo", "locandina")):
+                if c not in film[k] or (info.get("_cs") and c in ("titolo", "locandina", "_cs")):
                     film[k][c] = v
 
     for cin in CINEMA:
@@ -403,7 +639,7 @@ def main():
             if not sp:
                 raise RuntimeError("nessuno spettacolo trovato")
             for info in lista:
-                aggiungi_film(info, cin["fonte"] == "comingsoon")
+                aggiungi_film(info)
             for s in sp:
                 s["c"] = cin["id"]
             spettacoli += sp
@@ -433,6 +669,15 @@ def main():
         puliti.append(s)
     puliti.sort(key=lambda s: (s["d"], s["h"], s["c"], s["k"]))
     usati = {s["k"] for s in puliti}
+
+    # Film presi solo da un sito ufficiale o da MyMovies: titolo e locandina come su ComingSoon se lo conosce.
+    noti = {chiave_film(i["titolo"]): i for i in EXTRA["citta"].values()}
+    for k, info in film.items():
+        if not info.get("_cs") and k in noti:
+            for c, v in noti[k].items():
+                if c in ("titolo", "locandina") or c not in info:
+                    info[c] = v
+        info.pop("_cs", None)
 
     dati = {
         "generato": adesso,

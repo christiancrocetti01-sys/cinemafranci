@@ -38,7 +38,9 @@ const stato = {
 
 // ------------------------------------------------------------ utilità date/ore
 const isoLocale = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const oggiIso = () => isoLocale(new Date());
+// Fino alle 5 di notte "oggi" è ancora la giornata di ieri: lo spettacolo dell'1:00 sotto "sabato" è sabato notte.
+const oggiIso = () => isoLocale(new Date(Date.now() - 5 * 3600e3));
+const dopoIso = (s, n = 1) => { const d = daIso(s); d.setDate(d.getDate() + n); return isoLocale(d); };
 const daIso = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
 const eNotte = (h) => h < NOTTE_FINO_A;
 const chiaveOra = (h) => (eNotte(h) ? "2" : "1") + h; // la notte va in fondo alla giornata
@@ -46,17 +48,14 @@ const oraAdesso = () => { const n = new Date(); return `${String(n.getHours()).p
 
 function passato(s) {
   const oggi = oggiIso();
-  if (s.d < oggi) return true;
-  if (s.d > oggi) return false;
-  if (eNotte(s.h)) return false; // la notte di oggi non è ancora arrivata
-  const adesso = oraAdesso();
-  return !eNotte(adesso) && s.h < adesso;
+  if (s.d !== oggi) return s.d < oggi;
+  return chiaveOra(s.h) < chiaveOra(oraAdesso()); // la notte (00:00–05:00) viene dopo la sera
 }
 
 const normalizza = (t) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[.'’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 function etichettaTag(t) {
-  return { "Lingua originale": "Orig.", "Cinema a merenda": "Bimbi", "Dolby Atmos": "Atmos" }[t] || t;
+  return { "Lingua originale": "Orig.", "Cinema a merenda": "Bimbi", "Dolby Atmos": "Atmos", "Ospiti in sala": "Ospiti" }[t] || t;
 }
 
 // ------------------------------------------------------------ caricamento
@@ -95,7 +94,7 @@ function disegnaTutto() {
 
 function disegnaGiorni() {
   const oggi = oggiIso();
-  const domani = isoLocale(new Date(Date.now() + 864e5));
+  const domani = dopoIso(oggi);
   const box = $("#giorni");
   box.replaceChildren(...giorniDisponibili().map((g) => {
     const d = daIso(g);

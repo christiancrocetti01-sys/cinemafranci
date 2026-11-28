@@ -118,12 +118,25 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
      Soluzione: avvio esterno con cron-job.org che chiama l'API `workflow_dispatch` (vedi `docs/aggiornamento-esterno.md`).
      **Configurato e testato da Christian il 28/11** (risposta 204, run partito). Token fine-grained con scadenza:
      quando scade gli aggiornamenti tornano ~2 al giorno → rigenerarlo e aggiornare l'header su cron-job.org.
+- Fatto (28/11): **check completo degli orari** contro i siti ufficiali (script indipendente, tutti i giorni disponibili).
+  Trovati e corretti dei buchi:
+  - ComingSoon non conosce i film che un cinema fa solo nei giorni dopo se oggi non sono in nessun cinema di Firenze
+    ("Gli anni del padre" al Marconi 1–2/12), gli eventi lontani (10/12 "Succederà questa notte" con ospiti al Fiorella e al Principe)
+    e a volte salta un orario (Portico 30/11 18:00). → **Fiorella, Marconi, Principe e Portico ora si leggono dal sito ufficiale**
+    (`da_fiorella`, `da_stasera`, `da_portico`), e ComingSoon aggiunge sala, link d'acquisto e pagina "un passo prima"
+    quando lo spettacolo coincide (`unisci`). Se il sito ufficiale non si legge → solo ComingSoon come prima.
+  - UCI e Space: ComingSoon non aveva "La luce del mondo" (4 spettacoli oggi al Space) → si aggiungono da **MyMovies**
+    i film di OGGI che ComingSoon non ha (`integra_mymovies`, solo spettacoli non ancora iniziati, niente doppioni).
+  - Teatro Italia: una nota sotto un orario ("evento speciale Disney…") faceva perdere gli orari dopo (Hexe 28/11 18:00).
+  - Dopo mezzanotte: fino alle 05:00 "oggi" = giornata di ieri (sito e scraper), così gli spettacoli di notte restano visibili.
+  - Risultato: Fiorella, Portico, Marconi, Principe identici al sito ufficiale su tutti i giorni; UCI e Space identici a MyMovies
+    (oggi); Teatro Italia e Girone ricontrollati a mano pagina per pagina. Girone: il sito ha solo 2 eventi, tutti presi.
 - Da fare: farlo provare all'amico e raccogliere il suo feedback.
 - Idee possibili: pagina/scheda del film, filtro "dalle ore", aggiungere altri cinema (basta il path ComingSoon in `CINEMA`).
 
 ## Struttura del codice
-- `scraper/scrape.py`: solo libreria standard. Lista `CINEMA` (id, nome, zona, sito, fonte, path ComingSoon). Fonti: `da_comingsoon`,
-  `da_italia`, `da_girone`. Uscita: `site/data/programmazione.json` =
+- `scraper/scrape.py`: solo libreria standard. Lista `CINEMA` (id, nome, zona, sito, fonte, path ComingSoon, `ufficiale`, `mymovies`).
+  Fonti: `da_cinema_cs` (ComingSoon + sito ufficiale o MyMovies), `da_italia`, `da_girone`. Uscita: `site/data/programmazione.json` =
   `{generato, cinema:[{id,nome,zona,sito}], film:{chiave:{titolo,locandina|immagine,genere,durata}},
   spettacoli:[{k:chiave film, c:id cinema, d:"YYYY-MM-DD", h:"HH:MM", p:pagina del film in quel cinema, sala?, tag?:[...], url?:acquisto}], aggiornato:{id:iso}, errori:{id:msg}}`.
   - `chiave_film()` normalizza i titoli (accenti, punteggiatura, O.V./IMAX) per unire lo stesso film tra cinema diversi.

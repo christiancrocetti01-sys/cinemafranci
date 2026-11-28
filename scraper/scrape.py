@@ -142,11 +142,10 @@ def etichette(versione):
 
 # ---------------------------------------------------------------- ComingSoon
 
-def da_comingsoon(cin, rif):
-    pagina = scarica(CS + cin["path"])
-    film, spett = {}, []
-    blocchi = pagina.split('class="header-scheda')[1:]
-    for b in blocchi:
+def film_da_pagina(pagina):
+    """Schede film di una pagina ComingSoon (cinema o città): idf -> {titolo, locandina, genere, durata}."""
+    film = {}
+    for b in pagina.split('class="header-scheda')[1:]:
         m = re.search(r'href="/cinema/firenze/(?:[a-z0-9-]+/)?\?idf=(\d+)" title="([^"]+)" class="tit_olo', b)
         if not m:
             continue
@@ -160,10 +159,46 @@ def da_comingsoon(cin, rif):
             if g:
                 info[chiave] = html.unescape(g.group(1)).strip()
         film[idf] = info
+    return film
+
+
+# Film da controllare oltre a quelli elencati oggi nella pagina del cinema (vedi da_comingsoon).
+EXTRA = {"citta": {}, "prev": {}}
+
+
+def prepara_extra(prec):
+    """ComingSoon elenca nella pagina del cinema solo i film che hanno spettacoli OGGI: un film che
+    quel cinema proietta solo domani o nei giorni dopo non compare (es. il 28/11 "Il rumore delle
+    cose nuove" al The Space solo il 29). Per non perderli si controllano anche tutti i film in
+    programma oggi a Firenze e provincia, e quelli già trovati in quel cinema l'ultima volta."""
+    try:
+        EXTRA["citta"] = film_da_pagina(scarica(CS + "/cinema/firenze/"))
+    except Exception as e:
+        print(f"Elenco film di Firenze non disponibile: {e}", file=sys.stderr)
+    for s in (prec or {}).get("spettacoli", []):
+        m = re.search(r"/ticket/\?idf=(\d+)", s.get("p", ""))
+        info = (prec.get("film") or {}).get(s["k"])
+        if m and info and info.get("titolo"):
+            EXTRA["prev"].setdefault(s["c"], {})[m.group(1)] = info
+
+
+def da_comingsoon(cin, rif):
+    film = film_da_pagina(scarica(CS + cin["path"]))
+    elencati = set(film)
+    for fonte in (EXTRA["prev"].get(cin["id"], {}), EXTRA["citta"]):
+        for idf, info in fonte.items():
+            film.setdefault(idf, dict(info))
+    spett = []
+    con_spettacoli = set()
 
     for idf, info in film.items():
         pagina_film = f"{CS}{cin['path']}ticket/?idf={idf}"  # orari di quel film in quel cinema + acquisto
-        bigl = scarica(pagina_film)
+        try:
+            bigl = scarica(pagina_film)
+        except Exception:
+            if idf in elencati:
+                raise
+            continue  # film extra: se la pagina non risponde pazienza
         i = bigl.find('id="salaFilmList"')
         if i < 0:
             continue
@@ -190,7 +225,8 @@ def da_comingsoon(cin, rif):
                     if tag:
                         s["tag"] = tag
                     spett.append(s)
-    return list(film.values()), spett
+                    con_spettacoli.add(idf)
+    return [film[i] for i in film if i in con_spettacoli], spett
 
 
 # ---------------------------------------------------------------- Teatro Italia (Pontassieve)
@@ -339,6 +375,7 @@ def main():
     rif = oggi()
     adesso = dt.datetime.now(ROMA).isoformat(timespec="seconds")
     prec = carica_precedente(args.prev)
+    prepara_extra(prec)
     solo = set(args.solo.split(",")) if args.solo else None
 
     film = {}         # chiave -> info

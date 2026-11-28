@@ -109,6 +109,14 @@ Lo screenshot "FILM IN SALA" mandato dall'amico è del **Fiorella** (circuitocin
   PWA (manifest + service worker + icone), workflow di aggiornamento e pubblicazione.
 - Fatto (24/11): "non aggiorna" → cron GitHub inaffidabile (passato a ogni ora); Marconi vuoto su ComingSoon
   per qualche ora il 22–23/11 (errore temporaneo) → se una fonte è vuota si riprova dopo 60 s.
+- Fatto (28/11): "ha smesso di aggiornarsi e si sono persi film". Due cause:
+  1. **Film persi**: la pagina del cinema su ComingSoon elenca solo i film con spettacoli OGGI → un film proiettato
+     solo nei giorni dopo spariva (es. "Il rumore delle cose nuove" al Space solo il 29). Ora per ogni cinema si
+     controllano anche i film della pagina città `/cinema/firenze/` e quelli trovati lì nella pubblicazione precedente
+     (`prepara_extra`). Lo scraper ora dura ~3,5 min (~200 richieste).
+  2. **Aggiornamenti**: anche con cron ogni ora GitHub esegue solo ~2 run al giorno (verso le 14 e le 23 UTC).
+     Soluzione: avvio esterno con cron-job.org che chiama l'API `workflow_dispatch` (vedi `docs/aggiornamento-esterno.md`),
+     da configurare da parte di Christian.
 - Da fare: farlo provare all'amico e raccogliere il suo feedback.
 - Idee possibili: pagina/scheda del film, filtro "dalle ore", aggiungere altri cinema (basta il path ComingSoon in `CINEMA`).
 
